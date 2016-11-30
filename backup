@@ -1,0 +1,5 @@
+#!/bin/bash
+d=`date +%y%m%d%H%M`
+f="/mnt/USB/Digitaldata$d.tar.gz"
+s="/mnt/Digitaldata"
+tar -zcvf $f $s
