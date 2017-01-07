@@ -2,26 +2,28 @@
 
 ## Parameters
 # -n Name of file
-# -b {c|i|d} complete | incremetnal | diferencial
+# -l location of backup
 # -s source
-# -d destination
+#
 # 
 
 ## Variables
 log="/var/log/backup.log"
-d=`date +%d-%m-%y-%H.%M`
-f="/mnt/USB/Digitaldata$d.tar.gz"
-s="/mnt/Digitaldata
+d=`date +%d-%m-%y_%H.%M`
+n="DIF"
+l="/mnt/USB/"
+s="/mnt/Data"
 	
 args=("$@")
 i=0
 while [[ $i -lt $# ]]
 do
 	case ${args[$i]} in
-		"-s") s="${args[((i + 1))]}";;
-		"-f") f="${args[((i +1 ))]}";;
+		"-s") s="${args[((i+1))]}";;
+		"-t") t="${args[((i+1))]}";;
+		"-l") l="${args[((i+1))]}";;
 	esac
-	i=$((i + 1))
+	i=$((i+1))
 done
 
 ## Archivo de configuracion
@@ -29,9 +31,32 @@ done
 
 ## Funciones
 function writeLog {
-echo `date`  `whoami`  $1 >> $log
+case $2 in
+	"d") echo XXX `date`  `whoami`  $1 >> $log ;
+		echo XXX Danger $1 ;;
+	"w") echo !!! `date`  `whoami`  $1 >> $log ;
+		echo !!! Warning $1 ;;
+	"" | "*") echo     `date`  `whoami`  $1 >> $log ;;
+esac
 }
 
-echo $s $f
+function checkLocation {
+if [[ ! -w $l ]]; then
+	writeLog "No se encuentra la ubicacion $l o no se puede escribir ahi" d
+	exit 0
+fi
+}
+
+checkLocation
+
+case $t in
+	"i") echo $s $l$n"_"$d"_inc.tar.gz";
+		writeLog "Respaldo incremetal realizado correctamente";;
+	"d") echo $s $l$n"_"$d"_dif.tar.gz";
+		writeLog "Respaldo diferencial realizado correctamente";;
+	"c" | "f" | *) echo $s $l"$n_"$d"_full.tar.gz";
+		writeLog "Respaldo completo realizado correctamente";;
+esac
+
 
 #tar -zcvf $f $s
