@@ -12,7 +12,7 @@ log="/var/log/backup.log"
 d=`date +%d-%m-%y_%H.%M`
 n="DIF"
 l="/mnt/USB/"
-s="/mnt/Data"
+s="/mnt/Data/"
 	
 args=("$@")
 i=0
@@ -42,19 +42,27 @@ esac
 
 function checkLocation {
 if [[ ! -w $l ]]; then
-	writeLog "No se encuentra la ubicacion $l o no se puede escribir ahi" d
-	exit 0
+	writeLog "No se encuentra el destino del respaldo ("$l") o no se puede escribir ahi" d
+	exit -1
+fi
+}
+
+function checkSource {
+if [[ ! -w $s ]]; then
+	writeLog "No se encuentra el origuen de respaldo ("$s") o no se puede escribir ahi" d
+	exit -1
 fi
 }
 
 checkLocation
+checkSource
 
 case $t in
-	"i") echo $s $l$n"_"$d"_inc.tar.gz";
+	"i") echo Respaldo Incremental $s" > "$l$n"_"$d"_inc.tar.gz";
 		writeLog "Respaldo incremetal realizado correctamente";;
-	"d") echo $s $l$n"_"$d"_dif.tar.gz";
+	"d") echo Respaldo diferencial $s" > "$l$n"_"$d"_dif.tar.gz";
 		writeLog "Respaldo diferencial realizado correctamente";;
-	"c" | "f" | *) echo $s $l"$n_"$d"_full.tar.gz";
+	"c" | "f" | *) echo Respaldo completo $s" > "$l"$n_"$d"_full.tar.gz";
 		writeLog "Respaldo completo realizado correctamente";;
 esac
 
