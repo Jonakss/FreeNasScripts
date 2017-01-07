@@ -2,11 +2,17 @@
 
 ## Parameters
 # -n Name of file
-# -i incremental
+# -b {c|i|d} complete | incremetnal | diferencial
 # -s source
 # -d destination
 # 
 
+## Variables
+log="/var/log/backup.log"
+d=`date +%d-%m-%y-%H.%M`
+f="/mnt/USB/Digitaldata$d.tar.gz"
+s="/mnt/Digitaldata
+	
 args=("$@")
 i=0
 while [[ $i -lt $# ]]
@@ -20,25 +26,6 @@ done
 
 ## Archivo de configuracion
 #  backup.rc
-
-## Logs
-#  /var/log/backup.log
-log="/var/log/backup.log"
-
-## tar
-
-## Variables
-d=`date +%d-%m-%y-%H.%M`
-
-if [[ -z ${f:x} ]]
-then
-	f="/mnt/USB/Digitaldata$d.tar.gz"
-fi
-
-if [[ -z ${s:x} ]]
-then
-	s="/mnt/Digitaldata"
-fi
 
 ## Funciones
 function writeLog {
