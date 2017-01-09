@@ -71,7 +71,7 @@ function doCompleteBackup {
 	if [ $? -ne 0 ]; then
 		echo Error
 		writeLog "Error al realizar respaldo completo" d
-		exec $> /dev/null
+		exec &> /dev/null
 		mail -s $1 $2 <<-EOT
 		Aviso!: Mensaje autogenerado
 		
