@@ -5,7 +5,7 @@
 # -l location of backup
 # -s source
 #
-# 
+# -r Restore Backup
 
 ## Variables
 log="/var/log/backup.log"
@@ -13,6 +13,11 @@ d=`date +%d-%m-%y_%H.%M`
 n="DIF"
 l="/mnt/USB/"
 s="/mnt/Data/"
+
+f=$n"_"$d"_"
+ctail=full.tar.gz
+itail=inc.tar.gz
+dtail=f=dif.tar.gz
 
 function writeLog {
 case $2 in
@@ -27,10 +32,7 @@ esac
 ## Archivo de configuracion
 # backup.rc
 function checkConfigurationFile {
-if [[ ! -w "$1" ]]; then
-	writeLog "No se encuentra el archivo de configuracion ("$l") o hay permiso de lectura" d
-	exit -1
-fi
+[[ -d "$1" ]] || (writeLog "No se encuentra el archivo de configuracion ("$l") o hay permiso de lectura" d; exit -1)
 }
 
 function loadConfiguration {
@@ -42,37 +44,64 @@ args=("$@")
 i=0
 
 function checkLocation {
-if [[ ! -w $l ]]; then
-	writeLog "No se encuentra el destino del respaldo ("$l") o no se puede escribir ahi" d
-	exit -1
-fi
+[[ -d $l ]] || (writeLog "No se encuentra el destino del respaldo ("$l") o no se puede escribir ahi" d; exit -1)
 }
 
 function checkSource {
-if [[ ! -w $s ]]; then
-	writeLog "No se encuentra el origuen de respaldo ("$s") o no se puede escribir ahi" d
-	exit -1
-fi
+[[ -d $s ]] || (writeLog "No se encuentra el origuen de respaldo ("$s") o no se puede escribir ahi" d; exit -1)
 }
 
 function doCompleteBackup {
 	checkSource
 	checkLocation
-
+	
+	cd $l
+	local f=$f$ctail
+	tar -cpzf $f $s -g /mnt/USB/backup.snap
+	if [ $? -ne 0 ]; then
+		echo Error
+		writeLog "Error al realizar respaldo completo" d
+		return
+	else
+		writeLog "Respaldo completo realizado correctamente $f -> $s"
+	fi
 }
 
 function doIncrementalBackup {
 	checkSource
 	checkLocation
+	
+	cd $l
+	tar -cpzf $f $s
 
+	echo Respaldo Incremental $s" > "$l$f
+	writeLog "Respaldo incremetal realizado correctamente"
 }
 
 function doDiferencialBackup {
 	checkSource
 	checkLocation
 
+	cd $l
+	tar -cpzf $f $s -g ./backup.snap
+
+	echo Respaldo diferencial $s" > "$l$f
+	writeLog "Respaldo diferencial realizado correctamente"
 }
 
+#function restoreBackup {
+	
+#}
+
+function sendMail {
+	exec &> /dev/null
+	mail -s $1 $2 <<-EOT
+	Aviso!: Mensaje autogenerato por servidor de archivos (NAS)
+
+	$3
+
+	EOT
+}
 
 while [[ $i -lt $# ]]
 do
@@ -87,30 +116,21 @@ done
 
 
 case $t in
-	"i")
-		doIncrementalBackup ;
-		echo Respaldo Incremental $s" > "$l$n"_"$d"_inc.tar.gz";
-		writeLog "Respaldo incremetal realizado correctamente";;
+	"i") doIncrementalBackup;;
 	
-	"d") 	
-		doDiferencialBackup ;
-		echo Respaldo diferencial $s" > "$l$n"_"$d"_dif.tar.gz";
-		writeLog "Respaldo diferencial realizado correctamente";;
-	
-	"c" | "f" | *)
-		doCompleteBackup ;
-		echo Respaldo completo $s" > "$l"$n_"$d"_full.tar.gz";
-		writeLog "Respaldo completo realizado correctamente";;
+	"d") doDiferencialBackup;;	
+	"c" | "f" | *) doCompleteBackup;;
 esac
-
-
-#tar -zcvf $f $s
 
 unset d
 unset s
 unset n
 unset l
 unset i
+unset f
+unset itail
+unset ctail
+unset dtail
 unset log
 unset args
 
