@@ -4,11 +4,13 @@
 # -n Name of file
 # -l location of backup
 # -s source
+# 
 #
 # -r Restore Backup
 
 ## Variables
 log="/var/log/backup.log"
+snap="/etc/backup.snap"
 d=`date +%d-%m-%y_%H.%M`
 n="DIF"
 l="/mnt/USB/"
@@ -18,6 +20,8 @@ f=$n"_"$d"_"
 ctail=full.tar.gz
 itail=inc.tar.gz
 dtail=f=dif.tar.gz
+
+backup_days=30
 
 function writeLog {
 case $2 in
@@ -31,7 +35,7 @@ esac
 
 function sendMail {
 	exec &> /dev/null
-	mail -s $1 $2 <<-EOT
+	mail -s "$1" $2 <<-EOT
 	Aviso!: Mensaje autogenerato por servidor de archivos (NAS)
 
 	$3
@@ -67,23 +71,26 @@ function doCompleteBackup {
 	
 	cd $l
 	local f=$f$ctail
-	tar -cpzf $f $s -g /mnt/USB/backup.snap
-	if [ $? -ne 0 ]; then
-		echo Error
+	TEMP=`mktemp`
+	tar -cpzf $f $s -g $snap &>$TEMP
+	if [ $? -eq 1 ]; then
+		writeLog "Advertencia respaldo completo realizado correctamente pero hay una advertencia con tar" w
+		writeLog "$(cat $TEMP)" w
+	elif [ $? -ne 0 ]; then
 		writeLog "Error al realizar respaldo completo" d
-		exec &> /dev/null
-		mail -s $1 $2 <<-EOT
-		Aviso!: Mensaje autogenerado
-		
+		writeLog "$(cat $TEMP)" d
+		sendMail "Error al realizar respaldo completo" "jona.digitaldata@gmail.com" "		
 		Origen: $s
-		Destino: $l$f$ctail
+		Destino: $l$f
 		Tipo de respaldo: Completo
 		
-		Ultimas 15 lineas de log ($log)
-		$(cat $log | tail -15)
+		Ultimas 20 lineas de log ($log):
+
+		$(cat $log | tail -20)
 		
-		EOT
-		return
+		"
+		[ -o $snap ] && rm $snap
+		exit -1
 	else
 		writeLog "Respaldo completo realizado correctamente $f -> $s"
 	fi
@@ -126,6 +133,13 @@ do
 	i=$((i+1))
 done
 
+LS=`mktemp`
+$LS=$(ls $l)
+for f in "$LS"
+do
+	echo a
+	[ $f =~ "DIF*" ] && echo $f
+done
 
 case $t in
 	"i") doIncrementalBackup;;
@@ -144,6 +158,8 @@ unset itail
 unset ctail
 unset dtail
 unset log
+unset snap
 unset args
+unset TEMP
 
 exit 0
