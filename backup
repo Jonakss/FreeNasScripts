@@ -29,6 +29,16 @@ case $2 in
 esac
 }
 
+function sendMail {
+	exec &> /dev/null
+	mail -s $1 $2 <<-EOT
+	Aviso!: Mensaje autogenerato por servidor de archivos (NAS)
+
+	$3
+
+	EOT
+}
+
 ## Archivo de configuracion
 # backup.rc
 function checkConfigurationFile {
@@ -61,6 +71,18 @@ function doCompleteBackup {
 	if [ $? -ne 0 ]; then
 		echo Error
 		writeLog "Error al realizar respaldo completo" d
+		exec $> /dev/null
+		mail -s $1 $2 <<-EOT
+		Aviso!: Mensaje autogenerado
+		
+		Origen: $s
+		Destino: $l$f$ctail
+		Tipo de respaldo: Completo
+		
+		Ultimas 15 lineas de log ($log)
+		$(cat $log | tail -15)
+		
+		EOT
 		return
 	else
 		writeLog "Respaldo completo realizado correctamente $f -> $s"
@@ -92,16 +114,6 @@ function doDiferencialBackup {
 #function restoreBackup {
 	
 #}
-
-function sendMail {
-	exec &> /dev/null
-	mail -s $1 $2 <<-EOT
-	Aviso!: Mensaje autogenerato por servidor de archivos (NAS)
-
-	$3
-
-	EOT
-}
 
 while [[ $i -lt $# ]]
 do
