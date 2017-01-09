@@ -13,12 +13,28 @@ d=`date +%d-%m-%y_%H.%M`
 n="DIF"
 l="/mnt/USB/"
 s="/mnt/Data/"
+
+## Archivo de configuracion
+# backup.rc
+function checkConfigurationFile {
+if [[ ! -w "$1" ]]; then
+	writeLog "No se encuentra el archivo de configuracion ("$l") o hay permiso de lectura" d
+	exit -1
+fi
+}
+	checkConfigurationFile $1
+function loadConfiguration {
+	
+	writeLog "Cargado informacion desde $1"
+}
 	
 args=("$@")
 i=0
+
 while [[ $i -lt $# ]]
 do
 	case ${args[$i]} in
+		"-c") loadConfiguration "${args[((i+1))]}";;
 		"-s") s="${args[((i+1))]}";;
 		"-t") t="${args[((i+1))]}";;
 		"-l") l="${args[((i+1))]}";;
@@ -26,10 +42,6 @@ do
 	i=$((i+1))
 done
 
-## Archivo de configuracion
-#  backup.rc
-
-## Funciones
 function writeLog {
 case $2 in
 	"d") echo XXX `date`  `whoami`  $1 >> $log ;
@@ -54,17 +66,51 @@ if [[ ! -w $s ]]; then
 fi
 }
 
-checkLocation
-checkSource
+function doCompleteBackup {
+	checkSource
+	checkLocation
+
+}
+
+function doIncrementalBackup {
+	checkSource
+	checkLocation
+
+}
+
+function doDiferencialBackup {
+	checkSource
+	checkLocation
+
+}
+
 
 case $t in
-	"i") echo Respaldo Incremental $s" > "$l$n"_"$d"_inc.tar.gz";
+	"i")
+		doIncrementalBackup ;
+		echo Respaldo Incremental $s" > "$l$n"_"$d"_inc.tar.gz";
 		writeLog "Respaldo incremetal realizado correctamente";;
-	"d") echo Respaldo diferencial $s" > "$l$n"_"$d"_dif.tar.gz";
+	
+	"d") 	
+		doDiferencialBackup ;
+		echo Respaldo diferencial $s" > "$l$n"_"$d"_dif.tar.gz";
 		writeLog "Respaldo diferencial realizado correctamente";;
-	"c" | "f" | *) echo Respaldo completo $s" > "$l"$n_"$d"_full.tar.gz";
+	
+	"c" | "f" | *)
+		doCompleteBackup ;
+		echo Respaldo completo $s" > "$l"$n_"$d"_full.tar.gz";
 		writeLog "Respaldo completo realizado correctamente";;
 esac
 
 
 #tar -zcvf $f $s
+
+unset d
+unset s
+unset n
+unset l
+unset i
+unset log
+unset args
+
+exit 0
