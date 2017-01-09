@@ -14,34 +14,6 @@ n="DIF"
 l="/mnt/USB/"
 s="/mnt/Data/"
 
-## Archivo de configuracion
-# backup.rc
-function checkConfigurationFile {
-if [[ ! -w "$1" ]]; then
-	writeLog "No se encuentra el archivo de configuracion ("$l") o hay permiso de lectura" d
-	exit -1
-fi
-}
-	checkConfigurationFile $1
-function loadConfiguration {
-	
-	writeLog "Cargado informacion desde $1"
-}
-	
-args=("$@")
-i=0
-
-while [[ $i -lt $# ]]
-do
-	case ${args[$i]} in
-		"-c") loadConfiguration "${args[((i+1))]}";;
-		"-s") s="${args[((i+1))]}";;
-		"-t") t="${args[((i+1))]}";;
-		"-l") l="${args[((i+1))]}";;
-	esac
-	i=$((i+1))
-done
-
 function writeLog {
 case $2 in
 	"d") echo XXX `date`  `whoami`  $1 >> $log ;
@@ -51,6 +23,23 @@ case $2 in
 	"" | "*") echo     `date`  `whoami`  $1 >> $log ;;
 esac
 }
+
+## Archivo de configuracion
+# backup.rc
+function checkConfigurationFile {
+if [[ ! -w "$1" ]]; then
+	writeLog "No se encuentra el archivo de configuracion ("$l") o hay permiso de lectura" d
+	exit -1
+fi
+}
+
+function loadConfiguration {
+	checkConfigurationFile $1
+	writeLog "Cargado informacion desde $1"
+}
+	
+args=("$@")
+i=0
 
 function checkLocation {
 if [[ ! -w $l ]]; then
@@ -83,6 +72,18 @@ function doDiferencialBackup {
 	checkLocation
 
 }
+
+
+while [[ $i -lt $# ]]
+do
+	case ${args[$i]} in
+		"-c") loadConfiguration "${args[((i+1))]}";;
+		"-s") s="${args[((i+1))]}";;
+		"-t") t="${args[((i+1))]}";;
+		"-l") l="${args[((i+1))]}";;
+	esac
+	i=$((i+1))
+done
 
 
 case $t in
