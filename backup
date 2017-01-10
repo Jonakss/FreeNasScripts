@@ -11,26 +11,30 @@
 ## Variables
 log="/var/log/backup.log"
 snap="/etc/backup.snap"
-d=`date +%d-%m-%y_%H.%M`
+d=`date +%d-%m-%y`
+h=`date +_%H.%M`
 n="DIF"
 l="/mnt/USB/"
 s="/mnt/Data/"
 
-f=$n"_"$d"_"
+f=$n"_"$d$h"_"
 ctail=full.tar.gz
 itail=inc.tar.gz
-dtail=f=dif.tar.gz
+dtail=dif.tar.gz
 
 backup_days=30
 
 function writeLog {
-case $2 in
-	"d") echo XXX `date`  `whoami`  $1 >> $log ;
+	local logText=""
+	case $2 in
+		"d") logText="XXX ";
 		echo XXX Danger $1 ;;
-	"w") echo !!! `date`  `whoami`  $1 >> $log ;
-		echo !!! Warning $1 ;;
-	"" | "*") echo     `date`  `whoami`  $1 >> $log ;;
-esac
+		"w") logText="!!! ";
+			echo !!! Warning $1 ;;
+		"" | "*") logText="   " ;;
+	esac
+	logText="$logText `date`  `whoami`  $1"
+	echo $logText >> $log
 }
 
 function sendMail {
@@ -68,13 +72,14 @@ function checkSource {
 function doCompleteBackup {
 	checkSource
 	checkLocation
+
+	writeLog "Iniciando respaldo completo"
 	
 	cd $l
 	local f=$f$ctail
 	TEMP=`mktemp`
 	tar -cpzf $f $s -g $snap &>$TEMP
 	if [ $? -eq 1 ]; then
-		writeLog "Advertencia respaldo completo realizado correctamente pero hay una advertencia con tar" w
 		writeLog "$(cat $TEMP)" w
 	elif [ $? -ne 0 ]; then
 		writeLog "Error al realizar respaldo completo" d
@@ -130,20 +135,34 @@ do
 		"-t") t="${args[((i+1))]}";;
 		"-l") l="${args[((i+1))]}";;
 	esac
-	i=$((i+1))
+	
+i=$((i+1))
 done
 
 LS=`mktemp`
-$LS=$(ls $l)
-for f in "$LS"
+LS="$(ls $l$n*)"
+writeLog "Eliminando respaldos antiguso ($backup_days dias atras)."
+for ff in $LS
 do
-	echo a
-	[ $f =~ "DIF*" ] && echo $f
+	
+	now=$(date +%s)
+	bdis=$(($backup_days*60*60*24))
+	ld=$(($now - ($bdis)))
+	ld=$(date -u -r $ld +%d-%m-%y)
+
+	dd=$(echo $ff | cut -d "_" -f 2 | cut -d "-" -f 1) 
+	mm=$(echo $ff | cut -d "_" -f 2 | cut -d "-" -f 2)
+	yy=$(echo $ff | cut -d "_" -f 2 | cut -d "-" -f 3)		
+
+	[ $(( - $ld)) -gt $bdis ] && echo $bdis $now
+	[ $(($now - $ld)) -gt $bdis ] && echo $bdis $now
+	[ $(($now - $ld)) -gt $bdis ] && echo $bdis $now
+
+
 done
 
 case $t in
-	"i") doIncrementalBackup;;
-	
+	"i") doIncrementalBackup;;	
 	"d") doDiferencialBackup;;	
 	"c" | "f" | *) doCompleteBackup;;
 esac
@@ -154,6 +173,7 @@ unset n
 unset l
 unset i
 unset f
+unsel ld
 unset itail
 unset ctail
 unset dtail
