@@ -11,13 +11,12 @@
 ## Variables
 log="/var/log/backup.log"
 snap="/etc/backup.snap"
-d=`date +%d-%m-%y`
-h=`date +_%H.%M`
+d=`date +%d-%m-%Y`
 n="DIF"
 l="/mnt/USB/"
 s="/mnt/Data/"
 
-f=$n"_"$d$h"_"
+f=$n"_"$d"_"
 ctail=full.tar.gz
 itail=inc.tar.gz
 dtail=dif.tar.gz
@@ -34,6 +33,7 @@ function writeLog {
 		"" | "*") logText="   " ;;
 	esac
 	logText="$logText `date`  `whoami`  $1"
+#	[ -f $log ] || touch $log
 	echo $logText >> $log
 }
 
@@ -78,12 +78,17 @@ function doCompleteBackup {
 	cd $l
 	local f=$f$ctail
 	TEMP=`mktemp`
-	tar -cpzf $f $s -g $snap &>$TEMP
-	if [ $? -eq 1 ]; then
+	[ -f $snap ] && rm $snap
+	[ -f $l"backup.snap.bak" ] && rm $l"backup.snap.bak"	
+	gtar -czpf $f $s -g $snap --exclude='*jails*' &>$TEMP
+	if [ $? = 0 ]; then
+		writeLog "Respaldo completo realizado correctamente $f -> $s"
+		cp $snap $l"backup.snap.bak"
+	elif [ $? = 1 ]; then
 		writeLog "$(cat $TEMP)" w
-	elif [ $? -ne 0 ]; then
-		writeLog "Error al realizar respaldo completo" d
+	else
 		writeLog "$(cat $TEMP)" d
+		writeLog "Error al realizar respaldo completo" d
 		sendMail "Error al realizar respaldo completo" "jona.digitaldata@gmail.com" "		
 		Origen: $s
 		Destino: $l$f
@@ -96,8 +101,6 @@ function doCompleteBackup {
 		"
 		[ -o $snap ] && rm $snap
 		exit -1
-	else
-		writeLog "Respaldo completo realizado correctamente $f -> $s"
 	fi
 }
 
@@ -106,7 +109,7 @@ function doIncrementalBackup {
 	checkLocation
 	
 	cd $l
-	tar -cpzf $f $s
+	gtar -cpzf $f $s
 
 	echo Respaldo Incremental $s" > "$l$f
 	writeLog "Respaldo incremetal realizado correctamente"
@@ -117,7 +120,7 @@ function doDiferencialBackup {
 	checkLocation
 
 	cd $l
-	tar -cpzf $f $s -g ./backup.snap
+	gtar -cpzf $f $s -g ./backup.snap
 
 	echo Respaldo diferencial $s" > "$l$f
 	writeLog "Respaldo diferencial realizado correctamente"
