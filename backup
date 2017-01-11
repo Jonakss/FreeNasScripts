@@ -22,7 +22,7 @@ ctail=full.tar.gz
 itail=inc.tar.gz
 dtail=dif.tar.gz
 
-backup_days=30
+backup_days=15 # Default 15 dias
 
 function writeLog {
 	local logText=""
@@ -140,26 +140,23 @@ i=$((i+1))
 done
 
 LS=`mktemp`
-LS="$(ls $l$n*)"
-writeLog "Eliminando respaldos antiguso ($backup_days dias atras)."
-for ff in $LS
-do
+LS="$(ls $l$n* 2>/dev/null)"
+if [ $? -eq 0 ]; then
+	for ff in $LS
+	do
+		
+		now=$(date +%s)
+		bdis=$(($backup_days*60*60*24))
+		ld=$(($now - ($bdis)))
 	
-	now=$(date +%s)
-	bdis=$(($backup_days*60*60*24))
-	ld=$(($now - ($bdis)))
-	ld=$(date -u -r $ld +%d-%m-%y)
+		dd=$(echo $ff | cut -d "_" -f 2 | cut -d "-" -f 1) 
+		mm=$(echo $ff | cut -d "_" -f 2 | cut -d "-" -f 2)
+		yy=$(echo $ff | cut -d "_" -f 2 | cut -d "-" -f 3)		
+		bdate=`date -j -f "%d%m%y" "$dd$mm$yy" +%s`	
 
-	dd=$(echo $ff | cut -d "_" -f 2 | cut -d "-" -f 1) 
-	mm=$(echo $ff | cut -d "_" -f 2 | cut -d "-" -f 2)
-	yy=$(echo $ff | cut -d "_" -f 2 | cut -d "-" -f 3)		
-
-	[ $(( - $ld)) -gt $bdis ] && echo $bdis $now
-	[ $(($now - $ld)) -gt $bdis ] && echo $bdis $now
-	[ $(($now - $ld)) -gt $bdis ] && echo $bdis $now
-
-
-done
+		[ $bdate -lt $ld ] && (rm $ff; writeLog "Respaldo eliminado: $ff - Tiempo exedido $backup_days dias")
+	done	
+fi
 
 case $t in
 	"i") doIncrementalBackup;;	
@@ -173,7 +170,7 @@ unset n
 unset l
 unset i
 unset f
-unsel ld
+unset ld
 unset itail
 unset ctail
 unset dtail
