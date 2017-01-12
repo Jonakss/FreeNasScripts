@@ -110,7 +110,7 @@ function incrementalBackup {
 
 	local TEMP=`mktemp`
 	gtar -czpf $f $s -g $snap --exclude='*jails*' &>$TEMP
-	
+	[ $? != 0 ] && echo error	
 
 	echo Respaldo Incremental $s" > "$l$f
 	writeLog "Respaldo incremetal realizado correctamente"
