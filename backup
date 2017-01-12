@@ -104,15 +104,37 @@ function doCompleteBackup {
 	fi
 }
 
+function incrementalBackup {
+	writeLog "Iniciando respaldo incremental"
+	cd $l
+
+	local TEMP=`mktemp`
+	gtar -czpf $f $s -g $snap --exclude='*jails*' &>$TEMP
+	
+
+	echo Respaldo Incremental $s" > "$l$f
+	writeLog "Respaldo incremetal realizado correctamente"
+}
+
 function doIncrementalBackup {
 	checkSource
 	checkLocation
 	
-	cd $l
-	gtar -cpzf $f $s
-
-	echo Respaldo Incremental $s" > "$l$f
-	writeLog "Respaldo incremetal realizado correctamente"
+	if [ -f $snap ]; then
+		incrementalBackup
+	elif [ -f $l"backup.snap.bak" ]; then
+		## local fd=$(ls -la $l"backup.snap.bak" | cut -d " " -f 8)
+		## Comprobar fecha
+		## incrementalBackup
+		writeLog "No se encuentra $snap para realizar respaldo incremental. Pasando a  respaldo 
+completo"
+		doCompleteBackup
+	
+	else	
+		writeLog "No se encuentra $snap para realizar respaldo incremental. Pasando a  respaldo 
+completo"
+		doCompleteBackup
+	fi
 }
 
 function doDiferencialBackup {
