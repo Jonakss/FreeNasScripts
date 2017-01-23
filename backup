@@ -69,6 +69,22 @@ function checkSource {
 [[ -d $s ]] || (writeLog "No se encuentra el origuen de respaldo ("$s") o no se puede escribir ahi" d; exit -1)
 }
 
+fucntion backup_error {
+	writeLog "$(cat $1)" d
+	writeLog "Error al realizar respaldo $2" d
+	sendMail "Error al realizar respaldo $2" "jona.digitaldata@gmail.com" "		
+Origen: $s
+Destino: $l$f
+Tipo de respaldo: $2
+	
+Ultimas 20 lineas de log ($log):
+
+$(cat $log | tail -20)
+
+		"
+		[ -o $snap ] && rm $snap
+}
+
 function doCompleteBackup {
 	checkSource
 	checkLocation
@@ -78,28 +94,14 @@ function doCompleteBackup {
 	cd $l
 	local f=$f$ctail
 	TEMP=`mktemp`
-	[ -f $snap ] && rm $snap
-	[ -f $l"backup.snap.bak" ] && rm $l"backup.snap.bak"	
+	[ -f $snap ] && rm $snap	
 	gtar -czpf $f $s -g $snap --exclude='*jails*' &>$TEMP
 	if [ $? = 0 ]; then
 		writeLog "Respaldo completo realizado correctamente $f -> $s"
-		cp $snap $l"backup.snap.bak"
 	elif [ $? = 1 ]; then
 		writeLog "$(cat $TEMP)" w
 	else
-		writeLog "$(cat $TEMP)" d
-		writeLog "Error al realizar respaldo completo" d
-		sendMail "Error al realizar respaldo completo" "jona.digitaldata@gmail.com" "		
-		Origen: $s
-		Destino: $l$f
-		Tipo de respaldo: Completo
-		
-		Ultimas 20 lineas de log ($log):
-
-		$(cat $log | tail -20)
-		
-		"
-		[ -o $snap ] && rm $snap
+		backup_error $TEMP "completo"
 		exit -1
 	fi
 }
@@ -110,7 +112,14 @@ function incrementalBackup {
 
 	local TEMP=`mktemp`
 	gtar -czpf $f $s -g $snap --exclude='*jails*' &>$TEMP
-	[ $? != 0 ] && echo error	
+	if [ $? = 0 ]; then
+		writeLog "Respaldo incremetal realizado correctamente $f -> $s"
+	elif [ $? = 1 ]; then
+		writeLog "$(cat $TEMP)" w
+	else
+		backup_error $TEMP "incremental"
+		exit -1
+	fi
 
 	echo Respaldo Incremental $s" > "$l$f
 	writeLog "Respaldo incremetal realizado correctamente"
@@ -122,15 +131,8 @@ function doIncrementalBackup {
 	
 	if [ -f $snap ]; then
 		incrementalBackup
-	elif [ -f $l"backup.snap.bak" ]; then
-		## local fd=$(ls -la $l"backup.snap.bak" | cut -d " " -f 8)
-		## Comprobar fecha
-		## incrementalBackup
-		writeLog "No se encuentra $snap para realizar respaldo incremental. Pasando a  respaldo 
-completo"
-		doCompleteBackup
-	
-	else	
+		cp $snap $l"backup_"$d".snap"
+	else
 		writeLog "No se encuentra $snap para realizar respaldo incremental. Pasando a  respaldo 
 completo"
 		doCompleteBackup
@@ -179,7 +181,7 @@ if [ $? -eq 0 ]; then
 		yy=$(echo $ff | cut -d "_" -f 2 | cut -d "-" -f 3)		
 		bdate=`date -j -f "%d%m%y" "$dd$mm$yy" +%s`	
 
-		[ $bdate -lt $ld ] && (rm $ff; writeLog "Respaldo eliminado: $ff - Tiempo exedido $backup_days dias")
+		[ $bdate -lt $ld ] && (rm $ff; writeLog "Respaldo eliminado: $ff - Tiempo exedido $backup_days dias"; [ -f $l"backup_"$dd-$mm-$yy".snap" ] && rm $l"backup_"$dd-$mm-$yy".snap")
 	done	
 fi
 
