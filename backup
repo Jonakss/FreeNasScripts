@@ -150,10 +150,6 @@ function doDiferencialBackup {
 	writeLog "Respaldo diferencial realizado correctamente"
 }
 
-#function restoreBackup {
-	
-#}
-
 while [[ $i -lt $# ]]
 do
 	case ${args[$i]} in
