@@ -22,3 +22,6 @@ function sendMail {
 
 	EOT
 }
+
+export -f sendMail
+export -f writeLog
